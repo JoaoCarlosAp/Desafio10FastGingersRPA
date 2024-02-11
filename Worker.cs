@@ -26,17 +26,29 @@ namespace Desafio10FastGingersRPA
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Serviço iniciado: {time}", DateTimeOffset.Now);
+                try
+                {
+                    _logger.LogInformation("Serviço iniciado: {time}", DateTimeOffset.Now);
 
-                MainFlow();
+                    ResultModel result = PegarInformações();
 
-                _logger.LogInformation("Serviço finalizado: {time}", DateTimeOffset.Now);
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                    //Salvar no banco de dados
+
+                    _logger.LogInformation("Serviço finalizado: {time}", DateTimeOffset.Now);
+
+                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.Message);
+                }
             }
         }
 
-        public void MainFlow()
+        public ResultModel PegarInformações()
         {
+            ResultModel result = new ResultModel();
+
             using (var driver = new ChromeDriver(_chromeDriverPath, _chromeOptions))
             {
                 driver.Navigate().GoToUrl(_url);
@@ -50,37 +62,46 @@ namespace Desafio10FastGingersRPA
                 {
                     driver.FindElement(By.Id("CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll")).Click();
                 }
-                
-                DateTime horaInicio = DateTime.Now;
-                while (!PassaramXMinutos(horaInicio, _tempoExecucao))
+
+                if (VerificarPalavraNaPagina(driver, "highlight"))
                 {
-                    if (VerificarPalavraNaPagina(driver, "highlight"))
+                    DateTime horaInicio = DateTime.Now;
+                    while (!PassaramXMinutos(horaInicio, _tempoExecucao))
                     {
                         var palavraSelecionada = driver.FindElement(By.CssSelector("span[class='highlight']"));
 
                         var barra = driver.FindElement(By.Id("inputfield"));
 
                         barra.SendKeys(palavraSelecionada.Text + " ");
+
+                        Thread.Sleep(1000);
                     }
+                }
+                else 
+                {
+                    result.ErrorMesssage = "Não encontrado palavra selecionada.";
                 }
 
                 if (VerificarPalavraNaPagina(driver, "auswertung-result")) 
                 {
-                    ResultModel resultModel = new ResultModel()
+                    result = new ResultModel()
                     {
-                        Wpm = driver.FindElement(By.XPath("//*[@id=\"wpm\"]/strong")).Text,
-                        Keystrokes = driver.FindElement(By.XPath("//*[@id=\"keystrokes\"]/td[2]/small/span[1]")).Text,
-                        Accuracy = driver.FindElement(By.XPath("//*[@id=\"accuracy\"]/td[2]/strong")).Text,
-                        CorrectWords = driver.FindElement(By.XPath("//*[@id=\"correct\"]/td[2]/strong")).Text,
-                        WrongWords = driver.FindElement(By.XPath("//*[@id=\"wrong\"]/td[2]/strong")).Text
+                        Wpm             = driver.FindElement(By.XPath("//*[@id=\"wpm\"]/strong")).Text,
+                        Keystrokes      = driver.FindElement(By.XPath("//*[@id=\"keystrokes\"]/td[2]/small/span[1]")).Text,
+                        Accuracy        = driver.FindElement(By.XPath("//*[@id=\"accuracy\"]/td[2]/strong")).Text,
+                        CorrectWords    = driver.FindElement(By.XPath("//*[@id=\"correct\"]/td[2]/strong")).Text,
+                        WrongWords      = driver.FindElement(By.XPath("//*[@id=\"wrong\"]/td[2]/strong")).Text
                     };
                 }
+                else
+                {
+                    result.ErrorMesssage = "Nao encontrado caixa com resultados.";
+                }
 
-                // Salvar no banco de dados
-
-                // Fechar o navegador
                 driver.Quit();
             }
+
+            return result;
         }
 
         private bool PassaramXMinutos(DateTime tempoAnterior, int minutos)

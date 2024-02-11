@@ -13,5 +13,6 @@ namespace Desafio10FastGingersRPA.Models
         public string Accuracy { get; set; } = string.Empty;
         public string CorrectWords { get; set; } = string.Empty;
         public string WrongWords { get; set; } = string.Empty;
+        public string ErrorMesssage { get; set; } = string.Empty;
     }
 }
