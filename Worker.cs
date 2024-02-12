@@ -3,6 +3,7 @@ using OpenQA.Selenium;
 using System.Reflection.Metadata;
 using System;
 using Desafio10FastGingersRPA.Models;
+using OfficeOpenXml;
 
 namespace Desafio10FastGingersRPA
 {
@@ -32,11 +33,11 @@ namespace Desafio10FastGingersRPA
 
                     ResultModel result = PegarInformações();
 
-                    //Salvar no banco de dados
+                    SalvarDados(result);
 
                     _logger.LogInformation("Serviço finalizado: {time}", DateTimeOffset.Now);
 
-                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -74,7 +75,7 @@ namespace Desafio10FastGingersRPA
 
                         barra.SendKeys(palavraSelecionada.Text + " ");
 
-                        Thread.Sleep(1000);
+                        Thread.Sleep(100);
                     }
                 }
                 else 
@@ -113,6 +114,33 @@ namespace Desafio10FastGingersRPA
         private bool VerificarPalavraNaPagina(IWebDriver driver, string palavra)
         {
             return driver.PageSource.Contains(palavra);
+        }
+
+        private void SalvarDados(ResultModel result) 
+        {
+            string caminhoDownloads = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\Downloads";
+
+            FileInfo arquivo = new FileInfo(caminhoDownloads + "\\Tabela.xlsx");
+
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            using (ExcelPackage pacote = new ExcelPackage(arquivo))
+            {
+                ExcelWorksheet planilha = pacote.Workbook.Worksheets.Add(DateTime.Now.ToString("ddMMyyyy HH:mm:ss"));
+
+                planilha.Cells["A1"].Value = "Wpm";
+                planilha.Cells["B1"].Value = "Keystrokes";
+                planilha.Cells["C1"].Value = "Accuracy";
+                planilha.Cells["D1"].Value = "CorrectWords";
+                planilha.Cells["E1"].Value = "KeystrWrongWordsokes";
+
+                planilha.Cells["A2"].Value = result.Wpm;
+                planilha.Cells["B2"].Value = result.Keystrokes;
+                planilha.Cells["C2"].Value = result.Accuracy;
+                planilha.Cells["D2"].Value = result.CorrectWords;
+                planilha.Cells["E2"].Value = result.Keystrokes;
+
+                pacote.Save();
+            }
         }
     }
 }
